@@ -713,6 +713,103 @@ button.active {
   letter-spacing: 0.02em;
 }
 
+/* Authentication styles */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.auth-card {
+  background-color: var(--card-bg);
+  padding: 2rem;
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  backdrop-filter: var(--glass-blur);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-header {
+  margin-bottom: 2rem;
+}
+
+.auth-header h1 {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.passcode-form {
+  text-align: left;
+}
+
+
+.password-input-container{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+ 
+  transition: var(--transition);
+  backdrop-filter: var(--glass-blur);
+}
+
+.passcode-input {
+  width: 100%;
+  /* padding: 0.9rem; */
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-family: inherit;
+   color: var(--text-color);
+  letter-spacing: 0.15em;
+}
+
+.passcode-input::placeholder {
+  letter-spacing: normal;
+}
+
+.toggle-password-visibility {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  margin-right:10px;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: var(--transition);
+  backdrop-filter: none;
+}
+
+
+
+.toggle-password-visibility:hover {
+  color: var(--primary-color);
+  background: transparent;
+}
+
+.auth-button {
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .app-container {

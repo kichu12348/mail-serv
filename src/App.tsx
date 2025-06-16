@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; // Import icons
 
 
 const API_URL = import.meta.env.VITE_API_URL;// Adjust this if your API is hosted elsewhere
+const PASSCODE = import.meta.env.VITE_PASSCODE || "iedc2023"; // Default passcode if env variable not set
 
 // Define TypeScript interfaces
 interface Email {
@@ -35,16 +37,17 @@ const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB max file size
 
 function App() {
+  const [authenticated, setAuthenticated] = useState(false);
   const [view, setView] = useState<'compose' | 'list'>('compose');
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (view === 'list') {
+    if (view === 'list' && authenticated) {
       fetchEmails();
     }
-  }, [view]);
+  }, [view, authenticated]);
 
   const fetchEmails = async () => {
     setLoading(true);
@@ -59,6 +62,10 @@ function App() {
     }
   };
 
+  if (!authenticated) {
+    return <PasscodeForm onAuthenticate={setAuthenticated} />;
+  }
+
   return (
     <div className="app-container">
       {/* Background glow elements */}
@@ -68,7 +75,7 @@ function App() {
       <header>
         <div className="logo-container">
           <div className="title-container">
-            <h1>IEDC Mailer</h1>
+            <h1>IEDC Bootcamp Mailer</h1>
             <span className="organization-name">Innovation and Entrepreneurship Development Cell</span>
           </div>
         </div>
@@ -105,6 +112,85 @@ function App() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+// New component for passcode authentication
+function PasscodeForm({ onAuthenticate }: { onAuthenticate: (value: boolean) => void }) {
+  const [passcode, setPasscode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [showPassword, setShowPassword] = useState(false); // New state for password visibility
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (passcode === PASSCODE) {
+      sessionStorage.setItem('iedc_auth', 'true');
+      onAuthenticate(true);
+    } else {
+      setAttempts(prev => prev + 1);
+      setError(`Invalid passcode. Please try again. (Attempt ${attempts + 1})`);
+      setPasscode('');
+    }
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(prev => !prev);
+  };
+
+  return (
+    <div className="app-container auth-container">
+      {/* Background glow elements */}
+      <div className="bg-glow bg-glow-1"></div>
+      <div className="bg-glow bg-glow-2"></div>
+      
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>IEDC Bootcamp Mailer</h1>
+          <span className="organization-name">Innovation and Entrepreneurship Development Cell</span>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="passcode-form">
+          <div className="form-group">
+            <label htmlFor="passcode">Enter Passcode to Continue</label>
+            <div className="password-input-container">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="passcode"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Enter passcode"
+                style={{
+                  backgroundColor:"transparent",
+                  border:"none",
+                  outline:"none",
+                  backdropFilter:"none"
+                }}
+                required
+                autoFocus
+                className="passcode-input"
+              />
+              <button 
+                type="button" 
+                className="toggle-password-visibility"
+                onClick={togglePasswordVisibility}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+          </div>
+          
+          {error && <div className="error-message">{error}</div>}
+          
+          <button type="submit" className="send-button auth-button">
+            Verify & Continue
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
