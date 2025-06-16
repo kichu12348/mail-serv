@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 
 
@@ -25,8 +25,8 @@ interface FileUploadProgress {
 
 // Define available sender email addresses
 const SENDER_OPTIONS = [
-  'renaise@iedcbootcampcec.org',
   'renaise.sponsorship@iedcbootcampcec.org',
+  'renaise@iedcbootcampcec.org',
   'renaise.support@iedcbootcampcec.org'
 ];
 
@@ -61,8 +61,17 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* Background glow elements */}
+      <div className="bg-glow bg-glow-1"></div>
+      <div className="bg-glow bg-glow-2"></div>
+      
       <header>
-        <h1>Simple Mail Service</h1>
+        <div className="logo-container">
+          <div className="title-container">
+            <h1>IEDC Mailer</h1>
+            <span className="organization-name">Innovation and Entrepreneurship Development Cell</span>
+          </div>
+        </div>
         <nav>
           <button className={view === 'compose' ? 'active' : ''} onClick={() => setView('compose')}>
             Compose
@@ -103,7 +112,8 @@ function App() {
 // Component for composing emails
 function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
   const [sender, setSender] = useState(SENDER_OPTIONS[0]);
-  const [recipients, setRecipients] = useState('');
+  const [recipientInput, setRecipientInput] = useState('');
+  const [recipients, setRecipients] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -111,11 +121,79 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const recipientInputRef = useRef<HTMLInputElement>(null);
+  
+  // Handle recipient input changes
+  const handleRecipientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRecipientInput(value);
+    
+    // Check if the input ends with a comma
+    if (value.endsWith(',')) {
+      addRecipient(value.slice(0, -1).trim());
+    }
+  };
+  
+  // Handle key down in recipient input
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const value = recipientInput.trim();
+      if (value) {
+        addRecipient(value);
+      }
+    } else if (e.key === 'Backspace' && !recipientInput && recipients.length > 0) {
+      // Remove the last recipient when backspace is pressed and input is empty
+      setRecipients(prevRecipients => prevRecipients.slice(0, -1));
+    }
+  };
+  
+  // Handle focus on the recipient container
+  const handleContainerClick = () => {
+    if (recipientInputRef.current) {
+      recipientInputRef.current.focus();
+    }
+  };
+  
+  // Add a new recipient
+  const addRecipient = (email: string) => {
+    if (email && !recipients.includes(email)) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        setError(`Invalid email address: ${email}`);
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+      setRecipients(prevRecipients => [...prevRecipients, email]);
+    }
+    setRecipientInput('');
+  };
+  
+  // Remove a recipient
+  const removeRecipient = (index: number) => {
+    setRecipients(prevRecipients => 
+      prevRecipients.filter((_, i) => i !== index)
+    );
+  };
+  
+  // Handle the blur event on the recipient input
+  const handleRecipientInputBlur = () => {
+    const value = recipientInput.trim();
+    if (value) {
+      addRecipient(value);
+    }
+  };
   
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
+    
+    // Check if adding more files would exceed the limit
+    if (files.length + selectedFiles.length > 3) {
+      setError(`You can attach a maximum of 3 files. You've selected ${selectedFiles.length} files but can only add ${3 - files.length} more.`);
+      return;
+    }
     
     const filesArray: File[] = [];
     const fileProgressArray: FileUploadProgress[] = [];
@@ -137,8 +215,11 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
       });
     }
     
-    setFiles(filesArray);
-    setFileUploadProgress(fileProgressArray);
+    setFiles(prevFiles => [...prevFiles, ...filesArray]);
+    setFileUploadProgress(prevProgress => [...prevProgress, ...fileProgressArray]);
+    
+    // Clear the file input value to allow selecting the same file again
+    e.target.value = '';
   };
   
   // Upload a file in chunks
@@ -246,7 +327,7 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
     setSending(true);
 
     // Validate form
-    if (!sender || !recipients || !subject || !body) {
+    if (!sender || recipients.length === 0 || !subject || !body) {
       setError('Please fill out all required fields');
       setSending(false);
       return;
@@ -269,13 +350,8 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
       const formData = new FormData();
       formData.append('sender', sender);
       
-      // Split recipients by comma and trim whitespace
-      const recipientList = recipients
-        .split(',')
-        .map(r => r.trim())
-        .filter(r => r.length > 0);
-      
-      recipientList.forEach(recipient => {
+      // Use the recipients array directly
+      recipients.forEach(recipient => {
         formData.append('recipients', recipient);
       });
       
@@ -301,7 +377,8 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
 
       // Clear form and show success message
       setSender(SENDER_OPTIONS[0]);
-      setRecipients('');
+      setRecipients([]);
+      setRecipientInput('');
       setSubject('');
       setBody('');
       setFiles([]);
@@ -333,7 +410,10 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
 
   return (
     <div className="compose-container">
-      <h2>Compose New Email</h2>
+      <div className="compose-header">
+        <h2>Compose New Email</h2>
+        <div className="brand-tag">IEDC Mailer</div>
+      </div>
       
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
@@ -359,15 +439,36 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
 
         <div className="form-group">
           <label htmlFor="recipients">To:</label>
-          <input
-            type="text"
-            id="recipients"
-            value={recipients}
-            onChange={(e) => setRecipients(e.target.value)}
-            placeholder="recipient@email.com, another@email.com"
-            disabled={sending}
-            required
-          />
+          <div 
+            className="recipients-container" 
+            onClick={handleContainerClick}
+          >
+            {recipients.map((email, index) => (
+              <div key={index} className="recipient-bubble">
+                <span className="recipient-email">{email}</span>
+                <button 
+                  type="button"
+                  className="remove-recipient-btn"
+                  onClick={() => removeRecipient(index)}
+                  disabled={sending}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            <input
+              ref={recipientInputRef}
+              type="text"
+              id="recipients"
+              value={recipientInput}
+              onChange={handleRecipientInputChange}
+              onKeyDown={handleKeyDown}
+              onBlur={handleRecipientInputBlur}
+              placeholder={recipients.length === 0 ? "recipient@email.com, another@email.com" : ""}
+              disabled={sending}
+              className="recipient-input"
+            />
+          </div>
         </div>
 
         <div className="form-group">
@@ -397,13 +498,16 @@ function ComposeForm({ onEmailSent }: { onEmailSent: () => void }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="attachments">Attachments (Max 25MB per file):</label>
+          <label htmlFor="attachments">
+            Attachments (Max 3 files, 25MB per file):
+            <span className="attachment-counter">{files.length}/3</span>
+          </label>
           <input
             type="file"
             id="attachments"
             multiple
             onChange={handleFileChange}
-            disabled={sending}
+            disabled={sending || files.length >= 3}
             accept="*/*"
           />
           
@@ -465,7 +569,7 @@ function EmailList({
   return (
     <div className="email-list-container">
       <div className="list-header">
-        <h2>Sent Emails</h2>
+        <h2>IEDC - Sent Emails</h2>
         <button onClick={onRefresh} className="refresh-button">
           Refresh
         </button>
